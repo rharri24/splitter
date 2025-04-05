@@ -1,0 +1,23 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Node modules (for JS/Node apps)
+node_modules/
+
+# Python stuff
+__pycache__/
+*.pyc
+
+# OS junk
+.DS_Store
+
+# Logs and temporary files
+*.log
+*.sqlite
+*.sqlite3
+
+# IDE files
+.vscode/
+.idea/
