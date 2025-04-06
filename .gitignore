@@ -21,3 +21,6 @@ __pycache__/
 # IDE files
 .vscode/
 .idea/
+
+mongosh-2.0.2-linux-x64.tgz
+mongosh-2.0.2-linux-x64/
