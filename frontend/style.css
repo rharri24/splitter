@@ -1,16 +1,19 @@
-/* === GLOBAL VARIABLES === */
+/* === GLOBAL THEME VARIABLES === */
 :root {
-  --umd-red: #e21833;
-  --umd-yellow: #ffd200;
-  --umd-black: #000000;
-  --umd-white: #ffffff;
-  --soft-gray: #f9f9f9;
-  --dark-gray: #333;
+  --primary: #1e88e5;      /* tech blue */
+  --primary-dark: #1565c0;
+  --accent: #00acc1;       /* cyan accent */
+  --background: #f9fafb;
+  --surface: #ffffff;
+  --text-main: #1f2937;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
+  --shadow: rgba(0,0,0,0.05);
 }
 
 /* === BASE BODY === */
 body {
-  font-family: Arial, sans-serif;
+  font-family: "Inter", "Segoe UI", Roboto, sans-serif;
   margin: 0;
   min-height: 100vh;
   display: flex;
@@ -18,268 +21,225 @@ body {
   align-items: center;
   justify-content: center;
 
-  /* Animated Background removed ... (was the dot in the middle) radial-gradient(transparent 0.6em, #def 0.6em),*/
-  background-color: rgb(255, 0, 0);
+  /* === Animated Background === */
+  background-color: var(--background);
   background-image:
-    
-    conic-gradient(at 1em 1em, transparent 270deg, rgba(119, 0, 0, 0.2) 270deg),
-    conic-gradient(at 1em 1em, transparent 270deg, rgba(255, 255, 255, 0.267) 270deg),
-    conic-gradient(at 1em 1em, transparent 270deg, rgba(255, 255, 255, 0.333) 270deg),
-    conic-gradient(at 1em 1em, transparent 270deg, rgba(80, 55, 97, 0.4) 270deg);
-  background-size: 1em 1em, 4em 4em, 4em 4em, 4em 4em, 4em 4em;
-  background-position-x: 0, 0, 1em, 2em, 3em;
-  background-position-y: 0, 0, 1em, 2em, 3em;
+    conic-gradient(at 1em 1em, transparent 270deg, rgba(30, 136, 229, 0.06) 270deg),
+    conic-gradient(at 1em 1em, transparent 270deg, rgba(0, 172, 193, 0.08) 270deg),
+    conic-gradient(at 1em 1em, transparent 270deg, rgba(255, 255, 255, 0.25) 270deg),
+    conic-gradient(at 1em 1em, transparent 270deg, rgba(21, 101, 192, 0.1) 270deg);
+  background-size: 1em 1em, 4em 4em, 4em 4em, 4em 4em;
+  background-position-x: 0, 0, 1em, 2em;
+  background-position-y: 0, 0, 1em, 2em;
   animation: bpx 25s infinite linear, bpy 25s infinite linear;
 }
 
-/* === ANIMATIONS === */
+/* === BACKGROUND ANIMATIONS === */
 @keyframes bpx {
-  0%, 7.5%, 100% { background-position-x: 0, 0, 1em, 2em, 3em; }
-  12.5%, 20%     { background-position-x: 0, 1em, 0, 3em, 2em; }
-  25%, 32.5%     { background-position-x: 0, -1em, -2em, 5em, 4em; }
-  37.5%, 45%     { background-position-x: 0, 1em, -4em, 7em, 2em; }
-  50%, 57.5%     { background-position-x: 0, -2em, -5em, 8em, 5em; }
-  62.5%, 70%     { background-position-x: 0, -3em, -4em, 7em, 6em; }
-  75%, 82.5%     { background-position-x: 0, -1em, -2em, 5em, 4em; }
-  87.5%, 95%     { background-position-x: 0, -3em, 0, 3em, 6em; }
+  0%, 7.5%, 100% { background-position-x: 0, 0, 1em, 2em; }
+  12.5%, 20%     { background-position-x: 0, 1em, 0, 3em; }
+  25%, 32.5%     { background-position-x: 0, -1em, -2em, 5em; }
+  37.5%, 45%     { background-position-x: 0, 1em, -4em, 7em; }
+  50%, 57.5%     { background-position-x: 0, -2em, -5em, 8em; }
+  62.5%, 70%     { background-position-x: 0, -3em, -4em, 7em; }
+  75%, 82.5%     { background-position-x: 0, -1em, -2em, 5em; }
+  87.5%, 95%     { background-position-x: 0, -3em, 0, 3em; }
 }
 
 @keyframes bpy {
-  0%, 7.5%, 100% { background-position-y: 0, 0, 1em, 2em, 3em; }
-  12.5%, 20%     { background-position-y: 0, 1em, 0, 3em, 2em; }
-  25%, 32.5%     { background-position-y: 0, -1em, -2em, 5em, 4em; }
-  37.5%, 45%     { background-position-y: 0, 1em, -4em, 7em, 2em; }
-  50%, 57.5%     { background-position-y: 0, -2em, -5em, 8em, 5em; }
-  62.5%, 70%     { background-position-y: 0, -3em, -4em, 7em, 6em; }
-  75%, 82.5%     { background-position-y: 0, -1em, -2em, 5em, 4em; }
-  87.5%, 95%     { background-position-y: 0, -3em, 0, 3em, 6em; }
+  0%, 7.5%, 100% { background-position-y: 0, 0, 1em, 2em; }
+  12.5%, 20%     { background-position-y: 0, 1em, 0, 3em; }
+  25%, 32.5%     { background-position-y: 0, -1em, -2em, 5em; }
+  37.5%, 45%     { background-position-y: 0, 1em, -4em, 7em; }
+  50%, 57.5%     { background-position-y: 0, -2em, -5em, 8em; }
+  62.5%, 70%     { background-position-y: 0, -3em, -4em, 7em; }
+  75%, 82.5%     { background-position-y: 0, -1em, -2em, 5em; }
+  87.5%, 95%     { background-position-y: 0, -3em, 0, 3em; }
 }
 
-/* === SHARED ELEMENTS === */
+/* === CONTAINERS === */
 .container {
-  max-width: 400px;
+  max-width: 480px;
   width: 100%;
+  padding: 32px;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px var(--shadow);
   text-align: center;
-  padding: 20px;
+}
+
+/* === TYPOGRAPHY === */
+h1, h2, h3 {
+  font-weight: 600;
+  color: var(--text-main);
+  margin-top: 0;
 }
 
 h1 {
   font-size: 28px;
-  margin-bottom: 10px;
-  color: var(--umd-red);
-  border-bottom: 3px solid var(--umd-yellow);
-  padding-bottom: 10px;
+  margin-bottom: 16px;
   text-align: center;
-}
-
-h2, h3 {
-  color: var(--umd-black);
 }
 
 p {
-  color: #666;
-  margin-bottom: 15px;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.6;
 }
 
+/* === FORMS === */
 input, select {
-  padding: 10px;
-  border: 1px solid #ccc;
+  padding: 12px;
+  border: 1px solid var(--border);
   border-radius: 8px;
   width: 100%;
-  margin-bottom: 15px;
-  box-sizing: border-box;
+  margin-bottom: 16px;
+  font-size: 15px;
+  background-color: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+input:focus, select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.2);
+  outline: none;
+}
+
+/* === BUTTONS === */
 button, .btn {
   display: block;
   width: 100%;
-  padding: 15px;
+  padding: 14px;
   margin: 10px 0;
   border: none;
-  border-radius: 25px;
+  border-radius: 8px;
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.3s, transform 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-button:hover, .btn:hover {
-  transform: scale(1.05);
-  opacity: 0.9;
-}
-
-/* === BUTTON COLORS === */
+/* Primary */
 .btn-primary {
-  background: var(--umd-red);
-  color: white;
+  background: var(--primary);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--primary-dark);
 }
 
+/* Secondary */
 .btn-secondary {
-  background: #2e2e2e;
-  color: white;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+}
+.btn-secondary:hover {
+  background: #f3f4f6;
 }
 
-.btn-delete {
-  background: #222;
-  color: white;
-  border: 2px solid var(--umd-red);
+/* Danger */
+.btn-danger {
+  background: #ef4444;
+  color: #fff;
+}
+.btn-danger:hover {
+  background: #dc2626;
 }
 
-.btn-delete:hover {
-  background: var(--umd-red);
+/* Success */
+.btn-success {
+  background: #10b981;
+  color: #fff;
+}
+.btn-success:hover {
+  background: #059669;
 }
 
-.btn-like {
-  background: #43a047;
-  color: white;
-}
-
-.btn-like:hover {
-  background: #2e7d32;
-}
-
-.btn-pass {
-  background: #e53935;
-  color: white;
-}
-
-.btn-pass:hover {
-  background: #b71c1c;
-}
-
-/* === DASHBOARD === */
+/* === DASHBOARD / LIST === */
 .dashboard-container {
   max-width: 1000px;
   margin: auto;
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 40px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 20px var(--shadow);
 }
 
 .destination-list {
-  list-style-type: none;
+  list-style: none;
   padding: 0;
+  margin: 0;
 }
 
 .destination-list li {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-left: 5px solid var(--umd-red);
-  background: #fdf9f3;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 10px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-#student-info p,
-.other-destinations-section p {
-  margin: 6px 0;
-  font-size: 1em;
+.destination-list li:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.05);
 }
 
-.other-destinations-section {
-  margin-top: 40px;
-}
-
-.other-destinations-section > div {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 2px solid #eee;
-  padding: 12px;
-  border-radius: 8px;
-  background-color: #fafafa;
-}
-
-#map {
-  height: 300px;
-  margin-top: 20px;
-  border-radius: 10px;
-  border: 3px solid var(--umd-red);
-}
-
-/* === RESPONSIVE === */
-@media screen and (max-width: 768px) {
-  .destination-list li {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .destination-list li > div:last-child {
-    margin-top: 10px;
-  }
-}
-
-/* === MATCH RESULTS PAGE === */
+/* === MATCH RESULTS === */
 .match-results-page {
-  font-family: 'Segoe UI', sans-serif;
-  background-color: var(--soft-gray);
-  color: var(--dark-gray);
-  padding: 40px 20px;
   max-width: 900px;
   margin: auto;
-}
-
-.match-results-page h1 {
-  font-size: 32px;
-  margin-bottom: 20px;
-}
-
-.match-results-page p {
-  font-size: 16px;
-  text-align: center;
-  margin-top: 5px;
-  margin-bottom: 15px;
+  padding: 40px 20px;
+  background-color: var(--background);
 }
 
 .match {
-  background: var(--umd-white);
-  border: 2px solid var(--umd-red);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--primary);
   border-radius: 12px;
-  padding: 20px 25px;
-  margin: 20px auto;
-  max-width: 600px;
-  box-shadow: 0 6px 12px rgba(0,0,0,0.08);
-  transition: transform 0.2s ease-in-out;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 4px 10px var(--shadow);
+  transition: transform 0.2s ease;
 }
 
 .match:hover {
-  transform: scale(1.015);
+  transform: scale(1.01);
 }
 
 .match h3 {
   margin-top: 0;
-  color: var(--umd-black);
+  color: var(--text-main);
 }
 
 .match p {
+  color: var(--text-muted);
   margin: 6px 0;
-  font-size: 15px;
 }
 
-.lonely-msg {
-  font-style: italic;
-  color: #999;
-  margin-top: 40px;
-  text-align: center;
-  font-size: 17px;
-}
-
-.match-results-page a {
-  display: inline-block;
-  margin: 25px auto;
-  text-align: center;
-  color: var(--umd-white);
-  background-color: var(--umd-red);
-  padding: 12px 20px;
-  border-radius: 30px;
+/* === LINKS === */
+a {
+  color: var(--primary);
   text-decoration: none;
-  font-weight: bold;
-  transition: background 0.2s ease-in-out;
+  transition: color 0.2s ease;
+}
+a:hover {
+  color: var(--primary-dark);
 }
 
-.match-results-page a:hover {
-  background-color: var(--umd-yellow);
-  color: var(--umd-black);
+/* === RESPONSIVE === */
+@media screen and (max-width: 768px) {
+  .container, .dashboard-container {
+    padding: 20px;
+  }
+  .destination-list li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
