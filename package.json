@@ -1,8 +1,8 @@
 {
-  "name": "uberproj",
+  "name": "splitter",
   "version": "1.0.0",
   "description": "",
-  "main": "testdb.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
      "start": "node server.js",
