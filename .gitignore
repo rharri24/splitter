@@ -41,3 +41,6 @@ mongosh-2.0.2-linux-x64/
 *.zip
 *.tar.gz
 *.so
+.env
+node_modules/
+.DS_Store
