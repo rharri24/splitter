@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+.env.example
 
 # Node modules (for JS/Node apps)
 node_modules/
