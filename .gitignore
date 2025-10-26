@@ -36,3 +36,4 @@ mongosh-2.0.2-linux-x64/
 *.tar.gz
 *.so
 mongosh-2.0.2-linux-x64/
+.env
