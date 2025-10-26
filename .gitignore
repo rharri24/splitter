@@ -22,6 +22,12 @@ __pycache__/
 .vscode/
 .idea/
 
+# GitHub tokens and sensitive files
+github_pat_*
+*.pub
+*.key
+*.pem
+
 mongosh-2.0.2-linux-x64.tgz
 mongosh-2.0.2-linux-x64/mongosh-2.0.2-linux-x64.tgz
 mongosh-2.0.2-linux-x64/
@@ -35,5 +41,3 @@ mongosh-2.0.2-linux-x64/
 *.zip
 *.tar.gz
 *.so
-mongosh-2.0.2-linux-x64/
-.env

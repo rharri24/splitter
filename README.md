@@ -1,7 +1,43 @@
-NOTES SO FAR:
-    - remember to change the main in package.json to index later wheni make it, right now its test.js
+# Splitter - Campus Rideshare Matching App
 
-    -.env has google apikey
+A web application that helps students find others traveling to the same destination at similar times, enabling cost-effective ridesharing on campus.
+
+## Setup Instructions
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd splitter
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables**
+   - Copy `.env.example` to `.env`:
+     ```bash
+     cp .env.example .env
+     ```
+   - Fill in your actual API keys and credentials in `.env`
+   - **IMPORTANT**: Never commit the `.env` file to git - it contains sensitive information
+
+4. **Start the server**
+   ```bash
+   node server.js
+   ```
+
+## Security Note
+
+This project uses environment variables to store sensitive API keys and database credentials. Make sure:
+- Your `.env` file is listed in `.gitignore` (already configured)
+- Never share or commit your `.env` file
+- Use `.env.example` as a template for others
+
+---
+
+## Development Notes
 
 Progress:
 Day 1:
