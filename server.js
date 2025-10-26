@@ -178,44 +178,80 @@ app.get('/mainPage', async (req, res) => {
       return res.redirect('/login?error=Missing+credentials');
     }
 
+    // Clean up expired destinations on page load
+    await studentService.cleanupExpiredDestinations();
+
     const student = await studentService.findStudentByEmail(email);
 
     if (!student) {
       return res.redirect('/login?error=Student+not+found');
     }
 
+    const now = new Date();
+
+    // Filter out past destinations from current student
+    student.destinations = (student.destinations || []).filter(d => new Date(d.arrivalTime) > now);
+
     //// Get all other students' destinations
     const otherStudents = await studentModel.find({ email: { $ne: email } });
 
-    // Flatten all their destinations FOR SCROLLABLE LIST
+    // Flatten all their destinations FOR SCROLLABLE LIST, filtering out past ones
     const otherDestinations = otherStudents.flatMap(s => {
-      return (s.destinations || []).map(d => ({
-        name: s.name,
-        location: d.location,
-        arrivalTime: d.arrivalTime
-      }));
+      return (s.destinations || [])
+        .filter(d => new Date(d.arrivalTime) > now) // Only show future destinations
+        .map(d => ({
+          name: s.name,
+          location: d.location,
+          arrivalTime: d.arrivalTime
+        }));
     });
-    
 
-    //stuff for the map // MAP PINS 
-    const mapPins = [];
+    // Calculate hotspots - group by location and count
+    const hotspotMap = {};
 
-for (const student of otherStudents) {
-  for (const dest of (student.destinations || [])) {
-    const geocoded = await travelTimeService.geocodeAddress(dest.location);
-    if (geocoded) {
-      const [lat, lng] = geocoded.split(',').map(Number);
-      mapPins.push({
-        name: student.name,
-        location: dest.location,
-        arrivalTime: dest.arrivalTime,
-        lat,
-        lng
-      });
+    otherStudents.forEach(s => {
+      (s.destinations || [])
+        .filter(d => new Date(d.arrivalTime) > now)
+        .forEach(d => {
+          if (!hotspotMap[d.location]) {
+            hotspotMap[d.location] = {
+              location: d.location,
+              count: 0,
+              students: []
+            };
+          }
+          hotspotMap[d.location].count++;
+          hotspotMap[d.location].students.push({
+            name: s.name,
+            arrivalTime: d.arrivalTime
+          });
+        });
+    });
+
+    // Convert to array and sort by count (descending)
+    const hotspots = Object.values(hotspotMap)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10 hotspots
+
+    // Geocode hotspots for map display
+    const hotspotPins = [];
+    for (const hotspot of hotspots) {
+      try {
+        const geocoded = await travelTimeService.geocodeAddress(hotspot.location);
+        if (geocoded) {
+          const [lat, lng] = geocoded.split(',').map(Number);
+          hotspotPins.push({
+            location: hotspot.location,
+            count: hotspot.count,
+            lat,
+            lng,
+            students: hotspot.students.map(s => s.name).join(', ')
+          });
+        }
+      } catch (error) {
+        console.log(`Failed to geocode hotspot: ${hotspot.location}`);
+      }
     }
-  }
-}
-
 
     const studentData = {
       name: student.name,
@@ -223,8 +259,9 @@ for (const student of otherStudents) {
       uid: student.uid,
       destinations: student.destinations || [],
       noDestinations: !student.destinations || student.destinations.length === 0,
-      otherDestinations, //send to template for scrollable list(5 items for now)
-      mapPins, //for map
+      otherDestinations, //send to template for scrollable list
+      hotspots, // Popular destinations sorted by count
+      hotspotPins, // Geocoded hotspots for map
       suggestions: [
         { location: "BWI Airport" },
         { location: "Union Station" },
@@ -354,16 +391,34 @@ app.get('/matchResults', async (req, res) => {
 
   const matches = await studentService.findMatchingStudents(location, arrivalTime);
 
+  console.log('🔍 DEBUG - Raw matches from service:', JSON.stringify(matches, null, 2));
+
+  const mappedMatches = matches.map(match => {
+    console.log('🔍 DEBUG - Processing match:', {
+      studentName: match.student?.name,
+      studentEmail: match.student?.email,
+      studentPhone: match.student?.phoneNumber,
+      studentUid: match.student?.uid
+    });
+
+    return {
+      studentName: match.student?.name || 'Unknown',
+      studentEmail: match.student?.email || 'No email',
+      studentPhone: match.student?.phoneNumber || 'No phone',
+      arrivalTime: new Date(match.destination.arrivalTime).toLocaleString(),
+      timeDiff: Math.round(Math.abs(new Date(match.destination.arrivalTime) - new Date(arrivalTime)) / 60000)
+    };
+  });
+
+  console.log('🔍 DEBUG - Mapped matches:', JSON.stringify(mappedMatches, null, 2));
+
   res.render("matchResults", {
     destination: location,
     email,
-    uid, 
-    destination: location,
-    matches: matches.map(match => ({
-      studentName: match.student.name,
-      studentEmail: match.student.email,
-      arrivalTime: new Date(match.destination.arrivalTime).toLocaleString()
-    }))
+    uid,
+    arrivalTime: new Date(arrivalTime).toLocaleString(),
+    matchCount: matches.length,
+    matches: mappedMatches
   });
 });
 
@@ -406,13 +461,16 @@ app.post('/api/add-destination', async (req, res) => {
     console.log(`✅ Destination added for ${email}:`, { location, arrivalTime });
 
     // Get other destinations for the response
+    const now = new Date();
     const otherStudents = await studentModel.find({ email: { $ne: email } });
     const otherDestinations = otherStudents.flatMap(s => {
-      return (s.destinations || []).map(d => ({
-        name: s.name,
-        location: d.location,
-        arrivalTime: d.arrivalTime
-      }));
+      return (s.destinations || [])
+        .filter(d => new Date(d.arrivalTime) > now) // Only show future destinations
+        .map(d => ({
+          name: s.name,
+          location: d.location,
+          arrivalTime: d.arrivalTime
+        }));
     });
 
     // Return updated HTML fragment with Find Matches button included
@@ -524,15 +582,18 @@ app.delete('/api/delete-destination', async (req, res) => {
     await student.save();
 
     console.log(`✅ Destination at index ${index} deleted for ${email}`);
-    
-    // Get other destinations for the response
+
+    // Get other destinations for the response (after delete)
+    const now = new Date();
     const otherStudents = await studentModel.find({ email: { $ne: email } });
     const otherDestinations = otherStudents.flatMap(s => {
-      return (s.destinations || []).map(d => ({
-        name: s.name,
-        location: d.location,
-        arrivalTime: d.arrivalTime
-      }));
+      return (s.destinations || [])
+        .filter(d => new Date(d.arrivalTime) > now) // Only show future destinations
+        .map(d => ({
+          name: s.name,
+          location: d.location,
+          arrivalTime: d.arrivalTime
+        }));
     });
 
     res.send(`
@@ -636,7 +697,21 @@ app.use((req, res, next) => {
 
 
 
+//AUTOMATIC CLEANUP - Run every hour
+setInterval(async () => {
+  console.log('🧹 Running automatic cleanup of expired destinations...');
+  try {
+    const removed = await studentService.cleanupExpiredDestinations();
+    if (removed > 0) {
+      console.log(`🧹 Cleanup complete: Removed ${removed} expired destination(s)`);
+    }
+  } catch (error) {
+    console.error('❌ Error during automatic cleanup:', error);
+  }
+}, 60 * 60 * 1000); // Run every hour
+
 //START SERVER
 app.listen(PORT, () => {
   console.log(`✅ Server is running at http://localhost:${PORT}`);
+  console.log(`🧹 Automatic cleanup scheduled to run every hour`);
 });

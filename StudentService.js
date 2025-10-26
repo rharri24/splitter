@@ -292,51 +292,101 @@ async findStudentByEmail(email) {
     }
   }
 
+  /**
+   * Remove expired destinations from all students
+   * Returns count of removed destinations
+   */
+  async cleanupExpiredDestinations() {
+    try {
+      await this.connect();
+      const now = new Date();
+
+      // Find all students with destinations
+      const allStudents = await studentModel.find({ 'destinations.0': { $exists: true } });
+
+      let totalRemoved = 0;
+
+      for (const student of allStudents) {
+        const originalCount = student.destinations.length;
+
+        // Filter out expired destinations (arrival time has passed)
+        student.destinations = student.destinations.filter(dest => {
+          return new Date(dest.arrivalTime) > now;
+        });
+
+        const removed = originalCount - student.destinations.length;
+
+        if (removed > 0) {
+          await student.save();
+          totalRemoved += removed;
+          console.log(`Removed ${removed} expired destination(s) for ${student.name}`);
+        }
+      }
+
+      console.log(`Total expired destinations removed: ${totalRemoved}`);
+      return totalRemoved;
+    } catch (error) {
+      console.error('Error cleaning up expired destinations:', error);
+      throw error;
+    }
+  }
+
   async findMatchingStudents(destination, arrivalTime) {
     try {
       await this.connect();
-      
+
       const targetTime = new Date(arrivalTime);
+      const now = new Date();
       const oneHourInMs = 60 * 60 * 1000;
-      
+
       console.log(`Searching for students going to ${destination} around ${targetTime.toLocaleString()}`);
-      
+
       // Find all students that have the specified destination
       const studentsWithDestination = await studentModel.find({
         'destinations.location': destination
       });
-      
+
       console.log(`Found ${studentsWithDestination.length} students with destination ${destination}`);
-      
+
       const matches = [];
-      
+
       // Process each student to find matching arrival times
       studentsWithDestination.forEach(studentDoc => {
-        const student = StudentModel.fromDocument(studentDoc, this.travelTimeService);
-        
         // Check all destinations for this student
         studentDoc.destinations.forEach(dest => {
           if (dest.location === destination) {
             const destArrivalTime = new Date(dest.arrivalTime);
+
+            // Skip past destinations
+            if (destArrivalTime <= now) {
+              console.log(`Skipping past destination for ${studentDoc.name} (${studentDoc.uid})`);
+              return;
+            }
+
             const timeDifference = Math.abs(destArrivalTime - targetTime);
-            
+
             // Debug logging
-            console.log(`Student: ${student.name} (${student.uid}), Arrival: ${destArrivalTime.toLocaleString()}, Difference: ${Math.round(timeDifference/60000)} minutes`);
-            
+            console.log(`Student: ${studentDoc.name} (${studentDoc.uid}), Arrival: ${destArrivalTime.toLocaleString()}, Difference: ${Math.round(timeDifference/60000)} minutes`);
+
             // Include if within the time window
             if (timeDifference <= oneHourInMs) {
               matches.push({
-                student,
+                student: {
+                  name: studentDoc.name,
+                  email: studentDoc.email,
+                  phoneNumber: studentDoc.phoneNumber,
+                  uid: studentDoc.uid
+                },
                 destination: dest
               });
-              console.log(`Added ${student.name} (${student.uid}) to matches`);
+              console.log(`Added ${studentDoc.name} (${studentDoc.uid}) to matches`);
             } else {
-              console.log(` Excluded ${student.name} (${student.uid}) - outside time window`);
+              console.log(` Excluded ${studentDoc.name} (${studentDoc.uid}) - outside time window`);
             }
           }
         });
       });
-      
+
       console.log(`Total matching students: ${matches.length}`);
       return matches;
     } catch (error) {

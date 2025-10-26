@@ -1,42 +1,171 @@
-<!-- register.html -->
-<div class="form-container">
-    <h2>Register Student</h2>
-    <form 
-      hx-post="http://localhost:3000/api/register-student"
-      hx-trigger="submit"
-      hx-target="#main-content"
-      hx-swap="innerHTML"
-      onsubmit="return validateForm(event)"
-    >
-      <input type="text" name="name" placeholder="Full Name" required />
-      <input type="email" name="email" placeholder="Email" required />
-      <input type="text" name="phoneNumber" placeholder="Phone Number" required />
-      <input type="text" name="uid" placeholder="UID" required />
-      <input type="password" name="password" placeholder="Password" required />
-      <input type="password" name="confirmPassword" placeholder="Confirm Password" required />
-      
-      <button type="submit">Register Student</button>
-      <p>Already have an account? <a href="/login" hx-get="/login" hx-target="#main-content" hx-push-url="true">Login</a></p>
-    </form>
-  </div>
-  
-  <script>
-    function validateForm(e) {
-      const form = e.target;
-      const password = form.password.value;
-      const confirmPassword = form.confirmPassword.value;
-  
-      if (password !== confirmPassword) {
-        alert("⚠ Passwords do not match.");
-        return false;
-      }
-  
-      if (password.length < 6) {
-        alert("⚠ Password must be at least 6 characters.");
-        return false;
-      }
-  
-      return true;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Up - Splitter</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .form-group {
+      margin-bottom: 16px;
+      text-align: left;
     }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text-main);
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .error-message {
+      color: #ef4444;
+      font-size: 14px;
+      margin-top: 8px;
+      text-align: center;
+      min-height: 20px;
+    }
+    .success-message {
+      color: #10b981;
+      font-size: 14px;
+      margin-top: 8px;
+      text-align: center;
+    }
+    .form-footer {
+      margin-top: 20px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+    button[type="submit"] {
+      background: var(--primary);
+      color: #fff;
+    }
+    button[type="submit"]:hover {
+      background: var(--primary-dark);
+    }
+    button[type="submit"]:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Create Account</h1>
+    <p style="margin-bottom: 24px; color: var(--text-muted);">Join Splitter to find rideshare matches</p>
+
+    <form id="register-form">
+      <div class="form-group">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" name="name" placeholder="John Doe" required />
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="john@example.edu" required />
+      </div>
+
+      <div class="form-group">
+        <label for="phoneNumber">Phone Number</label>
+        <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="(123) 456-7890" required />
+      </div>
+
+      <div class="form-group">
+        <label for="uid">Student ID</label>
+        <input type="text" id="uid" name="uid" placeholder="123456789" required />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="Min. 6 characters" required />
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter password" required />
+      </div>
+
+      <div id="message" class="error-message"></div>
+
+      <button type="submit" id="submit-btn">Create Account</button>
+    </form>
+
+    <div class="form-footer">
+      Already have an account? <a href="/login">Log in</a>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('register-form');
+    const message = document.getElementById('message');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      message.textContent = '';
+      message.className = 'error-message';
+
+      const formData = new FormData(form);
+      const data = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phoneNumber: formData.get('phoneNumber'),
+        uid: formData.get('uid'),
+        password: formData.get('password'),
+        confirmPassword: formData.get('confirmPassword')
+      };
+
+      // Client-side validation
+      if (data.password !== data.confirmPassword) {
+        message.textContent = 'Passwords do not match';
+        return;
+      }
+
+      if (data.password.length < 6) {
+        message.textContent = 'Password must be at least 6 characters';
+        return;
+      }
+
+      // Disable submit button during request
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account...';
+
+      try {
+        const response = await fetch('/api/register-student', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(data)
+        });
+
+        const result = await response.text();
+
+        if (response.ok) {
+          // Check if response contains a redirect script
+          if (result.includes('window.location.href')) {
+            // Execute the redirect
+            const urlMatch = result.match(/mainPage\?email=([^&]+)&uid=([^']+)/);
+            if (urlMatch) {
+              window.location.href = `/mainPage?email=${urlMatch[1]}&uid=${urlMatch[2]}`;
+            }
+          } else {
+            message.className = 'success-message';
+            message.textContent = 'Registration successful! Redirecting...';
+            setTimeout(() => window.location.href = '/login', 1500);
+          }
+        } else {
+          // Extract error message from HTML if present
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(result, 'text/html');
+          const errorText = doc.querySelector('p')?.textContent || 'Registration failed';
+          message.textContent = errorText;
+        }
+      } catch (err) {
+        console.error('Registration error:', err);
+        message.textContent = 'Server error. Please try again later.';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+      }
+    });
   </script>
-  
+</body>
+</html>

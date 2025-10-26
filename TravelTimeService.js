@@ -65,7 +65,7 @@ class TravelTimeService {
         try {
             // HERE Geocoding API URL
             const geocodeUrl = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(address)}&apiKey=${this.apiKey}`;
-            
+
             const response = await fetch(geocodeUrl);
             const data = await response.json();
 
@@ -73,11 +73,13 @@ class TravelTimeService {
                 const position = data.items[0].position;
                 return `${position.lat},${position.lng}`;
             } else {
-                console.log("truied to geocode but failed:", address)
-                throw new Error("No geocoding results found");
+                // Silently return null for locations that can't be geocoded
+                // (This is expected for abbreviated names like "BWI")
+                console.log(`📍 Could not geocode "${address}" - try using full address for map display`);
+                return null;
             }
         } catch (error) {
-            console.error("Error geocoding address:", error);
+            console.log(`📍 Geocoding failed for "${address}" - location will not appear on map`);
             return null;
         }
     }

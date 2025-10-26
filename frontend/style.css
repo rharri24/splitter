@@ -233,6 +233,41 @@ a:hover {
   color: var(--primary-dark);
 }
 
+/* === AUTH FORMS === */
+.form-group input:invalid:not(:placeholder-shown) {
+  border-color: #fca5a5;
+}
+
+.form-group input:valid:not(:placeholder-shown) {
+  border-color: #86efac;
+}
+
+/* Loading state */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading::after {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: 8px;
+  border: 2px solid #fff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* === LOGO/BRANDING === */
+.logo-space {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
 /* === RESPONSIVE === */
 @media screen and (max-width: 768px) {
   .container, .dashboard-container {
