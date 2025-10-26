@@ -26,6 +26,7 @@ class TravelTimeService {
             // First, geocode the destination if it's not already coordinates
             let destinationCoords;
             if (typeof destination === 'string' && !destination.match(/^-?\d+\.\d+,-?\d+\.\d+$/)) {
+                console.log("Geocoding", destination)
                 destinationCoords = await this.geocodeAddress(destination);
                 console.log("Geocoded Destination:", destinationCoords);
             } else {
@@ -72,6 +73,7 @@ class TravelTimeService {
                 const position = data.items[0].position;
                 return `${position.lat},${position.lng}`;
             } else {
+                console.log("truied to geocode but failed:", address)
                 throw new Error("No geocoding results found");
             }
         } catch (error) {

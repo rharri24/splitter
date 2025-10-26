@@ -92,3 +92,8 @@ START IMPLEMENTING FRONT END
  - Update: spend too lon gdebugging cocde that wasnt broken, 
  turns out that i was broken, kept inputing saie id for differnt users and i searched by id, 
  changing to search by email since you cannot register with same email for different users @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@# uberProj
+
+
+4/7/2025
+Problems:
+- delete button still not working

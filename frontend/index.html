@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Student Ride Sharing</title>
+  <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Space for Logo -->
+  <div class="logo-space"></div>
+  <p>logo here</p>
+
+  <div class="container">
+    <!-- Main Content Swaps Here -->
+    <div id="main-content">
+      <h1>Login</h1>
+
+      <!-- Login Button -->
+      <button 
+        class="btn"
+        hx-get="/login" 
+        hx-target="#main-content" 
+        hx-push-url="true"
+      >
+        Continue to Login
+      </button>
+
+      <!-- New User Prompt -->
+      <p>New here?</p>
+
+      <!-- Sign Up Button -->
+      <button 
+        class="btn"
+        hx-get="/register" 
+        hx-target="#main-content" 
+        hx-push-url="true"
+      >
+        Sign Up
+      </button>
+    </div>
+  </div>
+
+  
+</body>
+</html>

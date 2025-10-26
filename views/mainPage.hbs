@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Student Ride Sharing</title>
+  <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<div class="dashboard-container">
+  <h1>HOME</h1>
+
+  <div id="student-info">
+    <h2>Welcome, <span id="student-name">{{name}}</span></h2>
+    <p>Email: <span id="student-email">{{email}}</span></p>
+    <p>UID: <span id="student-uid">{{uid}}</span></p>
+  </div>
+
+
+
+  <div id="destinations-container">
+    <!-- Always show this form -->
+    <div class="add-destination-container">
+      <h3>Add a Destination</h3>
+      <form
+        hx-post="/api/add-destination"
+        hx-trigger="submit"
+        hx-target="#destinations-container"
+        hx-swap="outerHTML"
+      >
+        <input type="hidden" name="email" value="{{email}}" />
+        <input type="hidden" name="uid" value="{{uid}}" />
+        <div class="form-group">
+          <label for="location">Where are you going?</label>
+          <input type="text" id="location" name="location" placeholder="e.g., BWI Airport" required />
+        </div>
+        <div class="form-group">
+          <label for="arrivalTime">When do you need to arrive?</label>
+          <input type="datetime-local" id="arrivalTime" name="arrivalTime" required />
+        </div>
+        <button type="submit" class="btn-primary">Add Destination</button>
+      </form>
+    </div>
+
+    <!-- List of current destinations -->
+    <div class="existing-destinations">
+      <h3>Your Destinations</h3>
+      {{#if destinations.length}}
+        <ul class="destination-list">
+          {{#each destinations}}
+  <li style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h4>{{this.location}}</h4>
+      <p>Arrival: {{this.arrivalTime}}</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <!-- Find Matches Button -->
+      <form action="/matchResults" method="GET">
+        <input type="hidden" name="email" value="{{../email}}" />
+        <input type="hidden" name="uid" value="{{../uid}}" />
+        <input type="hidden" name="location" value="{{this.location}}" />
+        <input type="hidden" name="arrivalTime" value="{{this.arrivalTime}}" />
+        <button type="submit" class="btn-secondary">Find Matches</button>
+      </form>
+
+      <!-- Delete Button -->
+      <button 
+  class="btn-delete"
+  hx-delete="/api/delete-destination"
+  hx-vals='{"email": "{{../email}}", "index": {{@index}} }'
+  hx-target="#destinations-container"
+  hx-swap="outerHTML"
+>
+  Delete
+</button>
+    </div>
+  </li>
+{{/each}}
+        </ul>
+      {{else}}
+        <p>No destinations yet.</p>
+      {{/if}}
+    </div>
+
+
+
+
+<div class="other-destinations-section">
+  <h3>Other Students' Destinations</h3>
+  <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+    {{#if otherDestinations.length}}
+      <ul style="list-style-type: none; padding: 0;">
+        {{#each otherDestinations}}
+          <li style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+            <strong>{{this.name}}</strong><br />
+            <span>{{this.location}}</span><br />
+            <small>Arrival: {{this.arrivalTime}}</small>
+          </li>
+        {{/each}}
+      </ul>
+    {{else}}
+      <p>No destinations from other students yet.</p>
+    {{/if}}
+  </div>
+</div>
+
+  </div>
+<div>map showing hotspot locations
+  <h3>Destination Map</h3>
+<div id="map" ></div>
+  
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const map = L.map('map');
+
+    // Add tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const pins = {{{json mapPins}}};
+    const bounds = [];
+
+    pins.forEach(pin => {
+      if (pin.lat && pin.lng) {
+        const marker = L.marker([pin.lat, pin.lng])
+          .addTo(map)
+          .bindPopup(`<strong>${pin.name}</strong><br>${pin.location}<br>Arrives: ${new Date(pin.arrivalTime).toLocaleString()}`);
+
+        bounds.push([pin.lat, pin.lng]);
+      }
+    });
+
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [30, 30] }); //  Zoom to fit all pins
+    } else {
+      map.setView([38.9072, -77.0369], 10); // Default center (DC area)
+    }
+  });
+</script>
+
+</div>
+
+<!-- Optional template for dynamic add form if you're using HTMX to load a new form -->
+<template id="destination-form-template">
+  <form
+    hx-post="/api/add-destination"
+    hx-trigger="submit"
+    hx-target="#destinations-container"
+    hx-swap="outerHTML"
+  >
+    <input type="hidden" name="email" value="{{email}}" />
+    <input type="hidden" name="uid" value="{{uid}}" />
+    <div class="form-group">
+      <label for="location">Location</label>
+      <input type="text" id="location" name="location" placeholder="e.g., BWI Airport" value="{{suggestedLocation}}" required />
+    </div>
+    <div class="form-group">
+      <label for="arrivalTime">Arrival Time</label>
+      <input type="datetime-local" id="arrivalTime" name="arrivalTime" required />
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">Add</button>
+      <button 
+        type="button" 
+        class="btn-cancel"
+        hx-get="/api/cancel-add"
+        hx-target="#add-destination-form"
+        hx-swap="innerHTML"
+      >
+        Cancel
+      </button>
+    </div>
+  </form>
+</template>
+
+<script src="https://unpkg.com/htmx.org@1.9.2"></script>
+
+
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
+
+<script>
+  const pins = {{{json mapPins}}};
+
+  pins.forEach(pin => {
+    if (pin.lat && pin.lng) {
+      L.marker([pin.lat, pin.lng])
+        .addTo(map)
+        .bindPopup(`<strong>${pin.name}</strong><br>${pin.location}<br>Arrives: ${new Date(pin.arrivalTime).toLocaleString()}`);
+    }
+  });
+</script>

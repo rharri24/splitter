@@ -1,0 +1,1 @@
+views folder For dynamic pages rendered by Express

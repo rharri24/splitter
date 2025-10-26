@@ -1,0 +1,42 @@
+<!-- register.html -->
+<div class="form-container">
+    <h2>Register Student</h2>
+    <form 
+      hx-post="http://localhost:3000/api/register-student"
+      hx-trigger="submit"
+      hx-target="#main-content"
+      hx-swap="innerHTML"
+      onsubmit="return validateForm(event)"
+    >
+      <input type="text" name="name" placeholder="Full Name" required />
+      <input type="email" name="email" placeholder="Email" required />
+      <input type="text" name="phoneNumber" placeholder="Phone Number" required />
+      <input type="text" name="uid" placeholder="UID" required />
+      <input type="password" name="password" placeholder="Password" required />
+      <input type="password" name="confirmPassword" placeholder="Confirm Password" required />
+      
+      <button type="submit">Register Student</button>
+      <p>Already have an account? <a href="/login" hx-get="/login" hx-target="#main-content" hx-push-url="true">Login</a></p>
+    </form>
+  </div>
+  
+  <script>
+    function validateForm(e) {
+      const form = e.target;
+      const password = form.password.value;
+      const confirmPassword = form.confirmPassword.value;
+  
+      if (password !== confirmPassword) {
+        alert("⚠ Passwords do not match.");
+        return false;
+      }
+  
+      if (password.length < 6) {
+        alert("⚠ Password must be at least 6 characters.");
+        return false;
+      }
+  
+      return true;
+    }
+  </script>
+  

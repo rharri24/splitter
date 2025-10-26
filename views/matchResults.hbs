@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Match Results</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="match-results-page">
+  <h1>Matching Students for Destination: {{destination}}</h1>
+  <p>Current User: {{email}}</p>
+  <hr>
+
+  {{#each matches}}
+    <div class="match">
+      <h3>{{this.studentName}}</h3>
+      <p>User: {{this.studentEmail}}</p>
+      <p>Desired Arrival Time: {{this.arrivalTime}}</p>
+    </div>
+  {{/each}}
+
+  {{#if matches.length}}
+    {{#ifCond matches.length '===' 1}}
+      <p class="lonely-msg">You're all alone  — no ride matches yet.</p>
+    {{/ifCond}}
+    {{#ifCond matches.length '===' 2}}
+      <p class="lonely-msg">Lucky you found someone !!!</p>
+    {{/ifCond}}
+  {{/if}}
+
+  {{#if uid}}
+    <a href="/mainPage?email={{email}}&uid={{uid}}">Back to Main Page</a>
+    <p></p>
+    <a href="/confirmGroup?email={{email}}&uid={{uid}}">Did not make this page yet but it will be to confirm groupings</a>
+
+  {{else}}
+    <a href="/login">Login Again</a>
+  {{/if}}
+</body>
+</html>

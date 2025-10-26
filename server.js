@@ -1,224 +1,642 @@
-import express from "express";
-import cors from "cors";
-import { StudentService } from "./StudentService.js";
-import { studentDatabase } from "./StudentDatabase.js";
-import TravelTimeService from "./TravelTimeService.js"; //would be { TravelTimeService } if it didnt export default
-import { studentModel } from "./StudentSchema.js";
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-import bcrypt from 'bcrypt'
+import hbs from 'hbs';
+hbs.registerHelper('json', function (context) {
+  return JSON.stringify(context);
+});
+
+hbs.registerHelper('ifCond', function (v1, operator, v2, options) {
+  switch (operator) {
+    case '===':
+      return v1 === v2 ? options.fn(this) : options.inverse(this);
+    default:
+      return options.inverse(this);
+  }
+});
+
+//pw encription stuff
+import cors from 'cors';
+import bcrypt from 'bcrypt';
+
+import { StudentService } from './StudentService.js';
+import { studentDatabase } from './StudentDatabase.js';
+import TravelTimeService from './TravelTimeService.js';
+import { studentModel } from './StudentSchema.js';
+
+
+
+
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const PORT = 3000;
+// const router = express.Router();
+// app.use(router);
 
-// Initialize Services
+// These two lines recreate __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+
+
+app.set('view engine', 'hbs'); // or 'handlebars' depending on your setup
+app.set('views', path.join(__dirname, 'views')); // adjust to match your folder
+
+
+//mongo db and services
+studentDatabase.connect();
 const travelTimeService = new TravelTimeService();
 const studentService = new StudentService(travelTimeService);
 
-// Connect to MongoDB
-studentDatabase.connect();
 
-/**
- * Register Student
- */
+//middleware
+app.use(cors());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'frontend')));
+
+
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend/index.html'));
+});
+
+app.get("/register", (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend/register.html'));
+});
+
+// app.use(express.static(path.join(__dirname, 'frontend')));
+
+
+
+
+
+
+//register sutdent endpoint
 app.post("/api/register-student", async (req, res) => {
-    const { name, email, phoneNumber, uid, password } = req.body;
+  const { name, email, phoneNumber, uid, password, confirmPassword } = req.body;
 
-    // Ensure all required fields are present
-    if (!name || !email || !phoneNumber || !uid || !password) {
-        return res.status(400).json({ error: "All fields including password are required" });
+  if (!name || !email || !phoneNumber || !uid || !password || !confirmPassword) {
+    return res.status(400).send("<p> All fields are required.</p>");
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).send("<p> Passwords do not match.</p>");
+  }
+
+  if (password.length < 6) {
+    return res.status(400).send("<p> Password must be at least 6 characters.</p>");
+  }
+
+  try {
+    const existingStudent = await studentService.findStudentByEmail(email);
+    if (existingStudent) {
+      return res.status(409).send("<p> Student already exists.</p>");
     }
 
-    console.log("Registration attempt for:", email);
-    
-    try {
-        console.log("Checking if student exists...");
-        const existingStudent = await studentService.findStudentByEmail(email);
-        if (existingStudent) {
-            console.log("Student already exists");
-            return res.status(409).json({ error: "Student with this email already exists" });
-        }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const student = await studentService.addNewStudent(name, email, phoneNumber, uid, hashedPassword);
 
-        console.log("Hashing password...");
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
-        
-        console.log("Adding new student...");
-        const student = await studentService.addNewStudent(name, email, phoneNumber, uid, hashedPassword);
-        
-        if (!student) {
-            return res.status(500).json({ error: "Error creating student" });
-        }
-
-        console.log("Student added successfully");
-        res.status(201).json({ message: "Student registered successfully" });
-    } catch (error) {
-        console.error("❌ Registration error:", error);
-        res.status(500).json({ error: "Error registering student" });
+    if (!student) {
+      return res.status(500).send("<p>Error saving student.</p>");
     }
+
+    console.log("Student added successfully");
+    // return res.send(`
+    //   <h2>Registration successful!</h2>
+    //   <p>Welcome, ${name}! Your email is ${email}.</p>
+    //   <a href="/mainPage.html">continue</a>
+    // `);
+    return res.send(`
+      <script>
+        window.location.href = '/mainPage?email=${encodeURIComponent(email)}&uid=${encodeURIComponent(uid)}';
+      </script>
+    `);
+
+
+  } catch (err) {
+    console.error("Registration error:", err);
+    // Only send a response if we haven't already
+    if (!res.headersSent) {
+      return res.status(500).send("<p> Server error. Please try again later.</p>");
+    }
+  }
 });
 
- 
 
-/**
- * Login
- */
+//login
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend/login.html'));
+});
+
 app.post("/api/login", async (req, res) => {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
+
+  try {
+    const student = await studentService.findStudentByEmail(email);
+    if (!student) {
+      console.warn(`❌ Login failed — no student found for ${email}`);
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, student.password);
+    if (!passwordMatch) {
+      console.warn(`❌ Login failed — wrong password for ${email}`);
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    console.log(`✅ Login successful for ${email}`);
+    //console.log("Redirecting to mainPage with:", result.student);
+
+
+    const { password: _, ...studentWithoutPassword } = student;
+
+    res.status(200).json({
+      message: "Login successful",
+      student: studentWithoutPassword
+    });
+
+  } catch (error) {
+    console.error("❌ Login error:", error);
+    res.status(500).json({ error: "Server error during login" });
+  }
+});
+
+
+
+
+
+
+
+app.get('/mainPage', async (req, res) => {
+  try {
+    const { email, uid } = req.query;
+
+    if (!email || !uid) {
+      return res.redirect('/login?error=Missing+credentials');
+    }
+
+    const student = await studentService.findStudentByEmail(email);
+
+    if (!student) {
+      return res.redirect('/login?error=Student+not+found');
+    }
+
+    //// Get all other students' destinations
+    const otherStudents = await studentModel.find({ email: { $ne: email } });
+
+    // Flatten all their destinations FOR SCROLLABLE LIST
+    const otherDestinations = otherStudents.flatMap(s => {
+      return (s.destinations || []).map(d => ({
+        name: s.name,
+        location: d.location,
+        arrivalTime: d.arrivalTime
+      }));
+    });
     
-    try {
-      // Find student by email
-      const student = await studentService.findStudentByEmail(email);
-      
-      if (!student) {
-        return res.status(401).json({ error: "Invalid email or password" });
-      }
-      
-      // Compare password with stored hash
-      const passwordMatch = await bcrypt.compare(password, student.password);
-      
-      if (!passwordMatch) {
-        return res.status(401).json({ error: "Invalid email or password" });
-      }
-      
-      // Login successful
-      // Don't send the password back in the response
-      const { password: _, ...studentWithoutPassword } = student;
-      res.status(200).json({ 
-        message: "Login successful", 
-        uid: student.uid,
-        student: studentWithoutPassword 
+
+    //stuff for the map // MAP PINS 
+    const mapPins = [];
+
+for (const student of otherStudents) {
+  for (const dest of (student.destinations || [])) {
+    const geocoded = await travelTimeService.geocodeAddress(dest.location);
+    if (geocoded) {
+      const [lat, lng] = geocoded.split(',').map(Number);
+      mapPins.push({
+        name: student.name,
+        location: dest.location,
+        arrivalTime: dest.arrivalTime,
+        lat,
+        lng
       });
-    } catch (error) {
-      console.error("Login error:", error);
-      res.status(500).json({ error: "Error during login" });
     }
-  });
+  }
+}
 
-/**
- * Register or Update Student
- */
-app.post("/api/update-student", async (req, res) => {
-  const { name, email, phoneNumber, uid } = req.body;
-  
-  try {
-    const student = await studentService.addOrUpdateStudent(name, email, phoneNumber, uid);
-    res.status(201).json({ message: "Student registered successfully", student });
+
+    const studentData = {
+      name: student.name,
+      email: student.email,
+      uid: student.uid,
+      destinations: student.destinations || [],
+      noDestinations: !student.destinations || student.destinations.length === 0,
+      otherDestinations, //send to template for scrollable list(5 items for now)
+      mapPins, //for map
+      suggestions: [
+        { location: "BWI Airport" },
+        { location: "Union Station" },
+        { location: "Pentagon City Mall" },
+        { location: "Tyson's Corner" },
+        { location: "Georgetown" }
+      ],
+      randomDestinations: [
+        "National Mall",
+        "Smithsonian Museum",
+        "National Harbor",
+        "Adams Morgan",
+        "Capitol Hill"
+      ]
+    };
+
+    // 👇 Render the Handlebars template with data
+    res.render('mainPage', studentData);
   } catch (error) {
-    res.status(500).json({ error: "Error registering student" });
+    console.error("Error loading main page:", error);
+    res.status(500).send("Server error. Please try again later.");
   }
 });
 
-/**
- * Add Destination for a Student
- */
-app.post("/api/add-destination", async (req, res) => {
-  const { uid, location, arrivalTime } = req.body;
-  
+
+app.post("/api/find-matches", async (req, res) => {
   try {
-    // Ensure destination data is provided
-    if (!uid || !location || !arrivalTime) {
-      return res.status(400).json({ error: "Missing required destination fields." });
+    const { email } = req.body;
+
+    const student = await studentService.findStudentByEmail(email);
+    if (!student) {
+      return res.status(404).send("<p>Student not found</p>");
     }
-    
-    // Update existing student by adding the destination
-    const student = await studentService.addOrUpdateStudent(name, email, phoneNumber, uid, location, arrivalTime);
-    res.status(200).json({ message: "Destination added successfully", student });
+
+    // Get the student's most recent destination
+    const lastDestination = student.destinations[student.destinations.length - 1];
+    if (!lastDestination) {
+      return res.send("<p>No destination found for this student.</p>");
+    }
+
+    const matches = await studentService.findMatchingStudents(
+      lastDestination.location,
+      lastDestination.arrivalTime
+    );
+
+    if (matches.length === 0) {
+      return res.send("<p>No matching students found.</p>");
+    }
+
+    const html = matches.map(match => `
+      <div style="margin-bottom: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+        <strong>${match.student.name}</strong> (UID: ${match.student.uid})<br>
+        <span>Destination: ${match.destination.location}</span><br>
+        <small>Arrival: ${new Date(match.destination.arrivalTime).toLocaleString()}</small>
+      </div>
+    `).join("");
+
+    res.send(`
+      <div>
+        <h3> Matching Students for ${lastDestination.location}</h3>
+        ${html}
+      </div>
+    `);
   } catch (error) {
-    res.status(500).json({ error: "Error adding destination" });
+    console.error(" Error finding matches:", error);
+    res.status(500).send("<p>Server error finding matches.</p>");
   }
 });
-  
-/**
- * Get student
- */
-app.get("/api/get-student", async (req, res) => {
-    const { email } = req.query; // Only get the uid parameter
-    
-    try {
-      const student = await studentService.findStudentByEmail(email);
-      if (!student) {
-        return res.status(404).json({ error: "Student not found" });
-      }
-      res.json(student);
-    } catch (error) {
-      res.status(500).json({ error: "Error fetching student" });
-    }
-  });
 
-/**
- * ADD or update student
- */
-// app.post("/api/add-or-update-student", async (req, res) => {
-//   const { name, email, phoneNumber, uid, destination, arrivalTime } = req.body;
-  
+
+// // went of srudents latest destination below is better(CAN DELETE)
+// app.get('/matchResults', async (req, res) => {
 //   try {
-//     const student = await studentService.addOrUpdateStudent(name, email, phoneNumber, uid, destination, arrivalTime);
-//     res.status(200).json({ message: "Student updated successfully", student });
+//     const { email } = req.query;
+//     if (!email) {
+//       return res.redirect('/login?error=Missing+credentials');
+//     }
+
+//     const student = await studentService.findStudentByEmail(email);
+//     if (!student) {
+//       return res.redirect('/login?error=Student+not+found');
+//     }
+
+//     // Use the student's latest destination to find matches
+//     const lastDestination = student.destinations[student.destinations.length - 1];
+//     if (!lastDestination) {
+//       return res.send("<p>You have no destination. Please add one first.</p>");
+//     }
+
+//     // Find matching students
+//     const matches = await studentService.findMatchingStudents(lastDestination.location, lastDestination.arrivalTime);
+
+//     if (matches.length === 0) {
+//       return res.send("<p>No matching students found.</p>");
+//     }
+
+//     // Render a new view for match results. You can send the matches array
+//     // Here we pass along matches and also include the other students' emails
+//     res.render('matchResults', {
+//       email: student.email,
+//       uid: student.id,
+//       destination: lastDestination.location,
+//       matches: matches.map(match => ({
+//         studentName: match.student.name,
+//         studentEmail: match.student.email,
+//         arrivalTime: match.destination.arrivalTime,
+//         // You can add more fields as needed
+//       }))
+//     });
 //   } catch (error) {
-//     res.status(500).json({ error: "Error updating student" });
+//     console.error("Error finding match results:", error);
+//     res.status(500).send("Server error finding matches.");
 //   }
 // });
 
-/**redo withoiut password */
-// app.post("/api/add-or-update-student", async (req, res) => {
-//     const { name, email, phoneNumber, uid, destination, arrivalTime } = req.body;
-//     console.log(email);
-//     try {
-//         const student = await studentService.addOrUpdateStudent(name, email, phoneNumber, uid, destination, arrivalTime, null);
+app.get('/matchResults', async (req, res) => {
+  const { email, location, arrivalTime, uid } = req.query;
 
-//         if (!student) {
-//             return res.status(404).json({ error: "❌ Student not found or update failed." });
-//         }
+  if (!email || !location || !arrivalTime) {
+    return res.status(400).send("Missing data for matching.");
+  }
 
-//         // Verify data saved in the DB
-//         const updatedStudent = await studentModel.findOne({ email });
-//         console.log("📌 Updated student from DB:", updatedStudent);
+  const student = await studentService.findStudentByEmail(email);
+  if (!student) {
+    return res.status(404).send("Student not found.");
+  }
 
-//         if (updatedStudent.destinations.length === 0) {
-//             return res.status(500).json({ error: "⚠ Destination was not saved properly. Please try again." });
-//         }
+  const matches = await studentService.findMatchingStudents(location, arrivalTime);
 
-//         res.status(200).json({ message: "✅ Student updated successfully", student: updatedStudent });
-//     } catch (error) {
-//         console.error("❌ Error updating student:", error);
-//         res.status(500).json({ error: "⚠ Error updating student. Check console for details." });
-//     }
-// });
-
-app.post("/api/add-or-update-student", async (req, res) => {
-    const { name, email, phoneNumber, uid, destination, arrivalTime } = req.body;
-
-    console.log("📌 API Received Email:", email); // ✅ Ensure email is received correctly
-
-    try {
-        // 🔹 Add or update student using email
-        const student = await studentService.addOrUpdateStudent(name, email, phoneNumber, uid, destination, arrivalTime);
-
-        if (!student) {
-            return res.status(404).json({ error: "❌ Student not found or update failed." });
-        }
-
-        // 🔹 Fetch the updated student using email instead of uid
-        const updatedStudent = await studentModel.findOne({ email });
-
-        console.log("📌 Updated student from DB:", updatedStudent);
-
-        // 🔹 Check if destinations array exists before accessing it
-        if (!updatedStudent || !updatedStudent.destinations || updatedStudent.destinations.length === 0) {
-            return res.status(500).json({ error: "⚠ Destination was not saved properly. Please try again." });
-        }
-
-        res.status(200).json({ message: "✅ Student updated successfully", student: updatedStudent });
-    } catch (error) {
-        console.error("❌ Error updating student:", error);
-        res.status(500).json({ error: "⚠ Error updating student. Check console for details." });
-    }
+  res.render("matchResults", {
+    destination: location,
+    email,
+    uid, 
+    destination: location,
+    matches: matches.map(match => ({
+      studentName: match.student.name,
+      studentEmail: match.student.email,
+      arrivalTime: new Date(match.destination.arrivalTime).toLocaleString()
+    }))
+  });
 });
 
-  
-/**
- * Start Express Server
- */
-const PORT = 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+
+
+// Add new destination
+app.post('/api/add-destination', async (req, res) => {
+  try {
+    const { email, uid, location, arrivalTime } = req.body;
+
+    console.log("📥 Incoming destination data:", { email, uid, location, arrivalTime });
+
+    if (!email || !location || !arrivalTime) {
+      console.warn("⚠️ Missing required fields in request body");
+      return res.status(400).send("Missing required fields");
+    }
+
+    const student = await studentService.findStudentByEmail(email);
+    if (!student) {
+      console.warn(`⚠️ No student found with email: ${email}`);
+      return res.status(404).send("Student not found");
+    }
+
+    console.log("✅ Student found:", student.email);
+
+    const updatedStudent = await studentService.addOrUpdateStudent(
+      student.name,
+      email,
+      student.phoneNumber,
+      uid,
+      location,
+      arrivalTime
+    );
+
+    if (!updatedStudent || !updatedStudent.destinations || updatedStudent.destinations.length === 0) {
+      console.error("❌ Destination was not saved correctly.");
+      return res.status(500).send("Failed to save destination.");
+    }
+    console.log(`✅ Destination added for ${email}:`, { location, arrivalTime });
+
+    // Get other destinations for the response
+    const otherStudents = await studentModel.find({ email: { $ne: email } });
+    const otherDestinations = otherStudents.flatMap(s => {
+      return (s.destinations || []).map(d => ({
+        name: s.name,
+        location: d.location,
+        arrivalTime: d.arrivalTime
+      }));
+    });
+
+    // Return updated HTML fragment with Find Matches button included
+    res.send(`
+      <div id="destinations-container">
+        <div class="add-destination-container">
+          <h3>Add a Destination</h3>
+          <form
+            hx-post="/api/add-destination"
+            hx-trigger="submit"
+            hx-target="#destinations-container"
+            hx-swap="outerHTML"
+          >
+            <input type="hidden" name="email" value="${email}" />
+            <input type="hidden" name="uid" value="${uid}" />
+            <div class="form-group">
+              <label for="location">Where are you going?</label>
+              <input type="text" id="location" name="location" placeholder="e.g., BWI Airport" required />
+            </div>
+            <div class="form-group">
+              <label for="arrivalTime">When do you need to arrive?</label>
+              <input type="datetime-local" id="arrivalTime" name="arrivalTime" required />
+            </div>
+            <button type="submit" class="btn-primary">Add Destination</button>
+          </form>
+        </div>
+    
+        <div class="existing-destinations">
+          <h3>Your Destinations</h3>
+          <ul class="destination-list">
+            ${updatedStudent.destinations.map((d, i) => `
+              <li style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <h4>${d.location}</h4>
+                  <p>Arrival: ${new Date(d.arrivalTime).toLocaleString()}</p>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                  <!-- Find Matches Button -->
+                  <form action="/matchResults" method="GET">
+                    <input type="hidden" name="email" value="${email}" />
+                    <input type="hidden" name="uid" value="${uid}" />
+                    <input type="hidden" name="location" value="${d.location}" />
+                    <input type="hidden" name="arrivalTime" value="${d.arrivalTime}" />
+                    <button type="submit" class="btn-secondary">Find Matches</button>
+                  </form>
+                  
+                  <!-- Delete Button -->
+                  <button 
+                    class="btn-delete"
+                    hx-delete="/api/delete-destination"
+                    hx-vals='{"email": "${email}", "index": ${i}}'
+                    hx-target="#destinations-container"
+                    hx-swap="outerHTML"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+        
+        <div class="other-destinations-section">
+          <h3>Other Students' Destinations</h3>
+          <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+            ${otherDestinations.length > 0 ? `
+              <ul style="list-style-type: none; padding: 0;">
+                ${otherDestinations.map(dest => `
+                  <li style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                    <strong>${dest.name}</strong><br />
+                    <span>${dest.location}</span><br />
+                    <small>Arrival: ${new Date(dest.arrivalTime).toLocaleString()}</small>
+                  </li>
+                `).join('')}
+              </ul>
+            ` : `<p>No destinations from other students yet.</p>`}
+          </div>
+        </div>
+      </div>
+    `);
+    
+  } catch (error) {
+    console.error("Error adding destination:", error);
+    res.status(500).send("Failed to add destination.");
+  }
+});
+
+// Fix for the delete-destination endpoint
+app.delete('/api/delete-destination', async (req, res) => {
+  try {
+    console.log("🗑️ DELETE request received:", req.body);
+
+    const { email, index } = req.body;
+    
+    if (!email || index === undefined) {
+      console.warn("⚠️ Missing required fields in delete request");
+      return res.status(400).send("Missing required fields for deletion");
+    }
+
+    const student = await studentService.findStudentByEmail(email);
+    if (!student || !student.destinations || student.destinations.length <= index) {
+      return res.status(404).send("Destination not found.");
+    }
+
+    // Get uid before removing the destination
+    const uid = student.uid;
+
+    student.destinations.splice(index, 1);
+    await student.save();
+
+    console.log(`✅ Destination at index ${index} deleted for ${email}`);
+    
+    // Get other destinations for the response
+    const otherStudents = await studentModel.find({ email: { $ne: email } });
+    const otherDestinations = otherStudents.flatMap(s => {
+      return (s.destinations || []).map(d => ({
+        name: s.name,
+        location: d.location,
+        arrivalTime: d.arrivalTime
+      }));
+    });
+
+    res.send(`
+      <div id="destinations-container">
+        <div class="add-destination-container">
+          <h3>Add a Destination</h3>
+          <form
+            hx-post="/api/add-destination"
+            hx-trigger="submit"
+            hx-target="#destinations-container"
+            hx-swap="outerHTML"
+          >
+            <input type="hidden" name="email" value="${email}" />
+            <input type="hidden" name="uid" value="${uid}" />
+            <div class="form-group">
+              <label for="location">Where are you going?</label>
+              <input type="text" id="location" name="location" placeholder="e.g., BWI Airport" required />
+            </div>
+            <div class="form-group">
+              <label for="arrivalTime">When do you need to arrive?</label>
+              <input type="datetime-local" id="arrivalTime" name="arrivalTime" required />
+            </div>
+            <button type="submit" class="btn-primary">Add Destination</button>
+          </form>
+        </div>
+    
+        <div class="existing-destinations">
+          <h3>Your Destinations</h3>
+          ${student.destinations.length > 0 ? `
+            <ul class="destination-list">
+              ${student.destinations.map((d, i) => `
+                <li style="display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <h4>${d.location}</h4>
+                    <p>Arrival: ${new Date(d.arrivalTime).toLocaleString()}</p>
+                  </div>
+                  <div style="display: flex; gap: 10px;">
+                    <!-- Find Matches Button -->
+                    <form action="/matchResults" method="GET">
+                      <input type="hidden" name="email" value="${email}" />
+                      <input type="hidden" name="uid" value="${uid}" />
+                      <input type="hidden" name="location" value="${d.location}" />
+                      <input type="hidden" name="arrivalTime" value="${d.arrivalTime}" />
+                      <button type="submit" class="btn-secondary">Find Matches</button>
+                    </form>
+                    
+                    <!-- Delete Button -->
+                    <button 
+                      class="btn-delete"
+                      hx-delete="/api/delete-destination"
+                      hx-vals='{"email": "${email}", "index": ${i}}'
+                      hx-target="#destinations-container"
+                      hx-swap="outerHTML"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              `).join('')}
+            </ul>
+          ` : `<p>No destinations yet.</p>`}
+        </div>
+        
+        <div class="other-destinations-section">
+          <h3>Other Students' Destinations</h3>
+          <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+            ${otherDestinations.length > 0 ? `
+              <ul style="list-style-type: none; padding: 0;">
+                ${otherDestinations.map(dest => `
+                  <li style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                    <strong>${dest.name}</strong><br />
+                    <span>${dest.location}</span><br />
+                    <small>Arrival: ${new Date(dest.arrivalTime).toLocaleString()}</small>
+                  </li>
+                `).join('')}
+              </ul>
+            ` : `<p>No destinations from other students yet.</p>`}
+          </div>
+        </div>
+      </div>
+    `);
+
+  } catch (error) {
+    console.error("❌ Error deleting destination:", error);
+    res.status(500).send("Failed to delete destination.");
+  }
+});
+
+
+app.use((req, res, next) => {
+  if (req.method === 'DELETE') {
+    express.json()(req, res, next);
+  } else {
+    next();
+  }
+});
+
+
+
+
+
+
+
+//START SERVER
+app.listen(PORT, () => {
+  console.log(`✅ Server is running at http://localhost:${PORT}`);
+});
